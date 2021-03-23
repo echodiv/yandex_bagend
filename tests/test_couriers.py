@@ -20,10 +20,12 @@ from app.couriers import services
 
 class CouriersServicesValidate(unittest.TestCase):
     def test_validate_post(self):
-        data = """{\"data\":[{\"courier_id\": 1,\"courier_type\": \"foot\",
-        \"regions\": [1, 12, 22], \"working_hours\": [\"11:35-14:05\", \"09:00-11:00\"]
-        },{\"courier_id\": 2,\"courier_type\": \"bike\",
-        \"regions\": [22],\"working_hours\": [\"09:00-18:00\"]}]}"""
+        data = """{\"data\":
+        [{\"courier_id\": 1,
+        \"courier_type\": \"foot\",
+        \"regions\": [1, 12, 22], 
+        \"working_hours\": [\"11:35-14:05\", \"09:00-11:00\"]
+        }]}"""
         result, error = services.validate_request(data)
         self.assertEqual(result, True)
         self.assertEqual(error, None)
@@ -62,6 +64,30 @@ class CouriersServicesValidate(unittest.TestCase):
         data = """]}"""
         result, error = services.validate_request(data)
         exp_error = '{"couriers": {"error": "invalid request"}}'
+        self.assertEqual(result, False)
+        self.assertEqual(error, exp_error)
+    
+    def test_invalid_region(self):
+        data = """{\"data\":
+        [{\"courier_id\": 1,
+        \"courier_type\": \"foot\",
+        \"regions\": ["a", 12, 22], 
+        \"working_hours\": [\"11:35-14:05\", \"09:00-11:00\"]
+        }]}"""
+        result, error = services.validate_request(data)
+        exp_error = """{\"couriers\": [{\"id\": 1}]}"""
+        self.assertEqual(result, False)
+        self.assertEqual(error, exp_error)
+
+    def test_invalid_hours(self):
+        data = """{\"data\":
+        [{\"courier_id\": 1,
+        \"courier_type\": \"foot\",
+        \"regions\": [12, 22], 
+        \"working_hours\": [\"11:35-1:05\", \"s00-11:00\"]
+        }]}"""
+        result, error = services.validate_request(data)
+        exp_error = """{\"couriers\": [{\"id\": 1}]}"""
         self.assertEqual(result, False)
         self.assertEqual(error, exp_error)
 

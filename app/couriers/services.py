@@ -1,10 +1,26 @@
 import json
+import re
 from app import db
 from flask import current_app
 from json.decoder import JSONDecodeError
+from pydantic import BaseModel, validator, ValidationError
 
 from app.models import Courier, Region, WorkTime
 
+
+class ValidCourier(BaseModel):
+    courier_id: int
+    courier_type: str
+    regions: list[int]
+    working_hours: list[str]
+
+    @validator('working_hours')
+    def working_hours_format(cls, v: str):
+        pattern =  re.compile('\d\d:\d\d-\d\d:\d\d')
+        for time in v:
+            if not pattern.match(time):
+                raise ValidationError
+    
 
 def parse_post_request(request):
     # current_app.logger.debug('POST request for couriesrs {}'.format(request))
@@ -16,7 +32,6 @@ def parse_post_request(request):
     json_data = json.loads(request)
 
     for raw_courier in json_data['data']:
-        # try:
         courier = Courier(
                 type = raw_courier['courier_type']
             )
@@ -41,8 +56,16 @@ def validate_request(data):
     error = [{"id": x['courier_id']} for x in json_data['data']
         if sorted(['courier_id', 'courier_type', 'regions', 'working_hours']) != \
             sorted(x.keys())]
+    for courier in json_data['data']:
+        try:
+            res = ValidCourier.parse_obj(courier)
+        except ValidationError:
+            if not [True for x in error if courier['courier_id'] in x.values()]:
+                error.append({"id": courier['courier_id']})
+
     if error:
         return False, json.dumps({'couriers': error})
+        
 
     return True, None
 

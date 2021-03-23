@@ -1,14 +1,19 @@
+import logging
+import os
 from flask import Flask, request, current_app
-from config import BaseConfig
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-import logging
 from logging.handlers import SMTPHandler, RotatingFileHandler
-import os
+from time import time
+from datetime import datetime
+
+from config import BaseConfig
+
 
 # flask modules
 db = SQLAlchemy()
 migrate = Migrate()
+
 
 def create_app(config_class=BaseConfig):
     app = Flask(__name__)
@@ -17,29 +22,27 @@ def create_app(config_class=BaseConfig):
     db.init_app(app)
     migrate.init_app(app, db)
     
-    from app.errors import bp as errors_bp
-    app.register_blueprint(errors_bp)
+    from app.couriers import bp as couriers_bp
+    app.register_blueprint(couriers_bp)
 
-    from app.api import bp as api_bp
-    app.register_blueprint(api_bp, url_prefix='/api')
+    from app.orders import bp as orders_bp
+    app.register_blueprint(orders_bp)
 
     if not os.path.exists('logs'):
         os.mkdir('logs')
-    file_handler = RotatingFileHandler('logs/HARDCHAT.log',
+    file_handler = RotatingFileHandler('logs/{}_delivery.log'.format(datetime.now().strftime("%Y%m%d_%H%M%s")),
                                         maxBytes=10240, backupCount=10)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s '
         '[in %(pathname)s:%(lineno)d]'))
-        
+
     file_handler.setLevel(logging.DEBUG)
     app.logger.addHandler(file_handler)
 
-    app.logger.setLevel(logging.INFO)
+    app.logger.setLevel(logging.DEBUG)
     app.logger.info('Delivery service startup')
 
     return app
-
-
 
 
 from app import models

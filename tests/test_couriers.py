@@ -97,6 +97,13 @@ class AddCouriersToDatabase(unittest.TestCase):
         self.app = create_app()
         self.app_context = self.app.app_context()
         self.app_context.push()
+    
+    def tearDown(self):
+        db.session.query(Courier).delete()
+        db.session.query(Region).delete()
+        db.session.query(WorkTime).delete()
+        db.session.remove()
+        self.app_context.pop()
 
     @patch('app.couriers.services.validate_request')
     def test_add_one_courier(self, validate_mock):

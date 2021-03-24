@@ -39,13 +39,15 @@ def parse_post_request(json_data):
     result, error = validate_request(json_data)
     current_app.logger.debug('request is valid')
     if not result:
-        return False, error
+        return result, error
 
     for raw_courier in json_data['data']:
         courier = Courier(
+                fake_id = raw_courier['courier_id'], # OMG!
                 type = raw_courier['courier_type']
             )
         db.session.add(courier)
+        current_app.logger.debug(f'Courier with id {raw_courier["courier_id"]} created')
         db.session.commit()
         regions = [Region(courier_id = courier.id, region_id = int(region)) 
             for region in raw_courier['regions']]
@@ -81,7 +83,7 @@ def validate_request(json_data):
         try:
             res = ValidCourier.parse_obj(courier)
         except ValidationError:
-            current_app.logger.debug(f'Invalid request schme in {courier=}')
+            current_app.logger.debug(f'Invalid request scehme in {courier=}')
             if not [True for x in error if courier['courier_id'] in x.values()]:
                 error.append({"id": courier['courier_id']})
 

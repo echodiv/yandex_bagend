@@ -5,6 +5,8 @@ from app import create_app, db
 from unittest.mock import Mock, patch
 from app.couriers import services
 
+from app.models import Courier, Region, WorkTime
+
 
 # class CouriersBusines(unittest.TestCase):
     # def setUp(self):
@@ -67,11 +69,35 @@ class CouriersServicesValidate(unittest.TestCase):
         self.assertEqual(result, False)
         self.assertEqual(error, exp_error)
     
-    def test_invalid_region(self):
+    def test_invalid_region_is_string(self):
         data = """{\"data\":
         [{\"courier_id\": 1,
         \"courier_type\": \"foot\",
         \"regions\": ["a", 12, 22], 
+        \"working_hours\": [\"11:35-14:05\", \"09:00-11:00\"]
+        }]}"""
+        result, error = services.validate_request(data)
+        exp_error = """{\"couriers\": [{\"id\": 1}]}"""
+        self.assertEqual(result, False)
+        self.assertEqual(error, exp_error)
+    
+    def test_invalid_region_is_negative(self):
+        data = """{\"data\":
+        [{\"courier_id\": 1,
+        \"courier_type\": \"foot\",
+        \"regions\": [-1, 12, 22], 
+        \"working_hours\": [\"11:35-14:05\", \"09:00-11:00\"]
+        }]}"""
+        result, error = services.validate_request(data)
+        exp_error = """{\"couriers\": [{\"id\": 1}]}"""
+        self.assertEqual(result, False)
+        self.assertEqual(error, exp_error)
+
+    def test_invalid_region_is_zero(self):
+        data = """{\"data\":
+        [{\"courier_id\": 1,
+        \"courier_type\": \"foot\",
+        \"regions\": [0, 12, 22], 
         \"working_hours\": [\"11:35-14:05\", \"09:00-11:00\"]
         }]}"""
         result, error = services.validate_request(data)

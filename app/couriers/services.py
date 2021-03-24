@@ -19,24 +19,27 @@ class ValidCourier(BaseModel):
     working_hours: list[str]
 
     @validator('working_hours')
-    def working_hours_format(cls, v: str) -> None:
+    def working_hours_format(cls, v: list) -> None:
         pattern =  re.compile('\d\d:\d\d-\d\d:\d\d')
-        for time in v:
-            if not pattern.match(time):
-                raise ValidationError
+        if list(filter(lambda x: not pattern.match(x), v)):
+            raise ValidationError
     
+    @validator('regions')
+    def regions_is_positive(cls, v: list) -> None:
+        if list(filter(lambda x: x <= 0, v)):
+            raise ValidationError
 
-def parse_post_request(request):
+
+def parse_post_request(json_data):
     """
     Функция добавления курьеров в базу данных
     """
-    current_app.logger.debug('POST request for couriesrs {}'.format(request))
+    current_app.logger.debug('POST request for couriesrs {}'.format(json_data))
     
-    result, error = validate_request(request)
+    result, error = validate_request(json_data)
+    current_app.logger.debug('request is valid')
     if not result:
         return False, error
-    
-    json_data = json.loads(request)
 
     for raw_courier in json_data['data']:
         courier = Courier(
@@ -53,10 +56,13 @@ def parse_post_request(request):
         db.session.add_all(regions + working_hours)
         db.session.commit()
 
-    return True, None
+    response = {"couriers": [{"id": x['courier_id']} for x in json_data['data']]}
+    current_app.logger.debug(f'response for couriers POST {response}')
+
+    return (response, 201), None
 
 
-def validate_request(data):
+def validate_request(json_data):
     """
     Валидация POST запроса на добавление курьеров
     На вход получает:
@@ -65,19 +71,17 @@ def validate_request(data):
      - статус валидации
      - ошибки (если валидация провалилась)
     """
-    try:
-        json_data = json.loads(data)
-    except JSONDecodeError as e:
-        return False, '{"couriers": {"error": "invalid request"}}'
-
     error = [{"id": x['courier_id']} for x in json_data['data']
         if sorted(['courier_id', 'courier_type', 'regions', 'working_hours']) != \
             sorted(x.keys())]
+    if error:
+        current_app.logger.debug(f'Arguments in request is not valid, {error=}')
 
     for courier in json_data['data']:
         try:
             res = ValidCourier.parse_obj(courier)
         except ValidationError:
+            current_app.logger.debug(f'Invalid request schme in {courier=}')
             if not [True for x in error if courier['courier_id'] in x.values()]:
                 error.append({"id": courier['courier_id']})
 
@@ -122,4 +126,4 @@ def make_get_respose(id):
 
     current_app.logger.debug(f'GET request :: {response=}')
 
-    return response, None
+    return (response, 200), None

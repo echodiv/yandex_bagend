@@ -14,7 +14,9 @@ def couriers(id=None):
         if request.method == 'GET':
             result, error = services.make_get_respose(id)
         elif request.method == 'PATCH':
-            result, error = reservices.parse_patch_request(id, request.json)
+            result, error = reservices.parse_patch_request(
+                id, 
+                request.json)
     
     if error is None:
         return result

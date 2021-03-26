@@ -7,6 +7,9 @@ from app.couriers import services
 
 @bp.route('/couriers', methods=['POST'])
 @bp.route('/couriers/<int:id>', methods=['GET','PATCH'])
+"""
+А я и не знал что пишу такое...
+"""
 def couriers(id=None):
     if id is None:
         result, error = services.parse_post_request(request.json)
@@ -14,10 +17,9 @@ def couriers(id=None):
         if request.method == 'GET':
             result, error = services.make_get_respose(id)
         elif request.method == 'PATCH':
-            result, error = reservices.parse_patch_request(
-                id, 
-                request.json)
+            result, error = services.parse_patch_request(id, request.json)
+            return result
     
-    if error is None:
+    if error is None or error is False:
         return result
     return error, 400

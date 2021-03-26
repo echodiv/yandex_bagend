@@ -55,7 +55,7 @@ def post_orders(request):
         db.session.commit()
 
     response = {"orders": [{"id": i['order_id']} for i in request['data']]}
-    return (response, 201), False
+    return (json.dumps(response), 201), False
 
 
 def validate_post_request(request):

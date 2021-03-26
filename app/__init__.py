@@ -28,6 +28,9 @@ def create_app(config_class=BaseConfig):
     from app.orders import bp as orders_bp
     app.register_blueprint(orders_bp)
 
+    from app.errors import bp as errors_bp
+    app.register_blueprint(errors_bp)
+
     if not os.path.exists('logs'):
         os.mkdir('logs')
     file_handler = RotatingFileHandler('logs/{}_delivery.log'.format(datetime.now().strftime("%Y%m%d_%H%M%s")),

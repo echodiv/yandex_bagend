@@ -138,5 +138,48 @@ class AddCouriersToDatabase(unittest.TestCase):
         data = json.loads("""{\"data\":[{\"courier_id\": 1,\"courier_type\": \"foot\",
         \"regions\": [1, 12, 22], \"working_hours\": [\"11:35-14:05\", \"09:00-11:00\"]}]}""")
         result, error = services.parse_post_request(data)
-        error = None
         self.assertEqual(error, None)
+
+
+class PatchRequest(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+    
+    def tearDown(self):
+        db.session.query(Courier).delete()
+        db.session.query(Region).delete()
+        db.session.query(WorkTime).delete()
+        db.session.remove()
+        self.app_context.pop()
+    
+    def test_empmty_patch(self):
+        request = {"regions": [11, 33, 2]}
+        result, error = services.validate_patch_request(request)
+        self.assertEqual(result, ('', 200))
+        self.assertFalse(error)
+    
+    def test_invalid_courier_type(self):
+        request = {"courier_type": [11, 33, 2]}
+        result, error = services.validate_patch_request(request)
+        self.assertEqual(result, ('{"error": "invalid courier_type type"}', 400))
+        self.assertTrue(error)
+ 
+    def test_invalid_region_type(self):
+        request = {"regions": ["a"]}
+        result, error = services.validate_patch_request(request)
+        self.assertEqual(result, ('{"error": "invalid region type"}', 400))
+        self.assertTrue(error)
+
+    def test_invalid_wh_type(self):
+        request = {"working_hours": [11, 33, 2]}
+        result, error = services.validate_patch_request(request)
+        self.assertEqual(result, ('{"error": "invalid working_hours type"}', 400))
+        self.assertTrue(error)
+
+    def test_invalid_one_wh_type(self):
+        request = {"working_hours": ['lool']}
+        result, error = services.validate_patch_request(request)
+        self.assertEqual(result, ('{"error": "invalid working_hours type"}', 400))
+        self.assertTrue(error)

@@ -82,7 +82,7 @@ def validate_request(json_data):
     for courier in json_data['data']:
         try:
             res = ValidCourier.parse_obj(courier)
-        except ValidationError:
+        except ValidationError as e:
             current_app.logger.debug(f'Invalid request scehme in {courier=}')
             if not [True for x in error if courier['courier_id'] in x.values()]:
                 error.append({"id": courier['courier_id']})
@@ -95,7 +95,73 @@ def validate_request(json_data):
 
 def parse_patch_request(id, request):
     current_app.logger.debug(f'PATCH request for courier with {id=}', request)
-    return 'aa', None
+    result, error = validate_patch_request(request)
+    if error:
+        return result, error
+
+    courier = Courier.query.filter_by(fake_id=id).first_or_404()
+
+    if 'regions' in request.keys():
+        regions = Region.query.filter_by(courier_id=courier.id)
+        if regions:
+            regions.delete()
+        regions = [Region(courier_id = courier.id, region_id = int(region)) 
+            for region in request['regions']]
+        db.session.add_all(regions)
+
+    if 'working_hours' in request.keys():
+        hours = WorkTime.query.filter_by(courier_id=courier.id)
+        if hours:
+            hours.delete()
+        working_hours = [WorkTime(courier_id=courier.id, start=x.split('-')[0], end=x.split('-')[1])
+            for x in request['working_hours']]
+        db.session.add_all(working_hours)
+    
+    if 'courier_type' in request.keys():
+        courier.type = request['courier_type']
+    
+    db.session.commit()
+
+    return ('', 200), False
+
+
+def validate_patch_request(request):
+    """
+    Валидация patch запроса на обновление пользователя
+    Валидируем всё руками
+    """
+    if 'working_hours' not in request.keys() and \
+       'courier_type' not in request.keys() and \
+       'regions' not in request.keys():
+        return ('{"error": "request not contain valid keys"}', 400), True
+    
+    if [True for x in request.keys() if x not in ['working_hours','courier_type','regions']]:
+        return ('{"error": "invalid key in request"}', 400), True
+    
+    if 'courier_type' in request.keys() and type(request['courier_type']) is not str:
+        return ('{"error": "invalid courier_type type"}', 400), True
+
+    if request['courier_type'] not in ['foot', 'bike', 'car']:
+        return ('{"error": "invalid courier_type value"}', 400), True
+
+    if 'working_hours' in request.keys():
+        if type(request['working_hours']) is not list:
+            return ('{"error": "invalid working_hours type"}', 400), True
+        pattern =  re.compile('\d\d:\d\d-\d\d:\d\d')
+        for i in request['working_hours']:
+            if not pattern.match(str(i)):
+                return ('{"error": "invalid working_hours type"}', 400), True
+
+    if 'regions' in request.keys():
+        if type(request['regions']) is not list:
+            return ('{"error": "invalid regions type"}', 400), True
+        for i in request['regions']:
+            try:
+                int(i)
+            except ValueError:
+                return ('{"error": "invalid region type"}', 400), True
+
+    return ('', 200), False
 
 
 def make_get_respose(id):
@@ -113,7 +179,7 @@ def make_get_respose(id):
     }
     """
     current_app.logger.debug(f'GET request for courier with {id=}')
-    cura = Courier.query.filter_by(id=id).first_or_404()
+    cura = Courier.query.filter_by(fake_id=id).first_or_404()
 
     response = {'courier_id': cura.id,
                 'courier_type': str(cura.type).split('.')[-1]}

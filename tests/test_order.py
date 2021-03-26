@@ -67,9 +67,9 @@ class AddOrdersToDatabase(unittest.TestCase):
         db.session.remove()
         self.app_context.pop()
 
-    @patch('app.couriers.services.validate_request')
+    @patch('app.orders.services.validate_post_request')
     def test_add_two_orders(self, validate_mock):
-        validate_mock.return_value = (True, None)
+        validate_mock.return_value = (('', 200), False)
         data = json.loads("""
         {\"data\": [
         {
@@ -85,5 +85,5 @@ class AddOrdersToDatabase(unittest.TestCase):
         }]}
         """)
         result, error = services.post_orders(data)
-        error = None
-        self.assertEqual(error, None)
+        self.assertFalse(error)
+        self.assertEqual(result, (json.dumps({"orders": [{"id": 1}, {"id": 2}]}), 201))

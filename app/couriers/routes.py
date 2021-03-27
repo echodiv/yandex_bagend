@@ -7,9 +7,6 @@ from app.couriers import services
 
 @bp.route('/couriers', methods=['POST'])
 @bp.route('/couriers/<int:id>', methods=['GET','PATCH'])
-"""
-А я и не знал что пишу такое...
-"""
 def couriers(id=None):
     if id is None:
         result, error = services.parse_post_request(request.json)

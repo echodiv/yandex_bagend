@@ -49,11 +49,14 @@ def parse_post_request(json_data):
         db.session.add(courier)
         current_app.logger.debug(f'Courier with id {raw_courier["courier_id"]} created')
         db.session.commit()
-        regions = [Region(courier_id = courier.id, region_id = int(region)) 
+        regions = [Region(courier_id = courier.fake_id, region_id = int(region)) 
             for region in raw_courier['regions']]
 
-        working_hours = [WorkTime(courier_id=courier.id, start=x.split('-')[0], end=x.split('-')[1])
-            for x in raw_courier['working_hours']]
+        working_hours = [WorkTime(
+            courier_id=courier.fake_id, 
+            start=int(x.split('-')[0].split(':')[0])*60 + int(x.split('-')[0].split(':')[1]), 
+            end=int(x.split('-')[1].split(':')[0])*60 + int(x.split('-')[1].split(':')[1]))
+                for x in raw_courier['working_hours']]
         
         db.session.add_all(regions + working_hours)
         db.session.commit()
@@ -94,13 +97,15 @@ def validate_request(json_data):
 
 
 def parse_patch_request(id, request):
+    # Ничего не боимся. Слабоумие и отвага!
     current_app.logger.debug(f'PATCH request for courier with {id=}', request)
     result, error = validate_patch_request(request)
     if error:
         return result, error
 
     courier = Courier.query.filter_by(fake_id=id).first_or_404()
-
+    
+    # Перезаписываем. Про мёрж не было ни слова
     if 'regions' in request.keys():
         regions = Region.query.filter_by(courier_id=courier.id)
         if regions:
@@ -109,17 +114,22 @@ def parse_patch_request(id, request):
             for region in request['regions']]
         db.session.add_all(regions)
 
+    # Повторяем безумие
     if 'working_hours' in request.keys():
         hours = WorkTime.query.filter_by(courier_id=courier.id)
         if hours:
             hours.delete()
-        working_hours = [WorkTime(courier_id=courier.id, start=x.split('-')[0], end=x.split('-')[1])
-            for x in request['working_hours']]
+            working_hours = [WorkTime(
+                courier_id=courier.id, 
+                start=int(x.split('-')[0].split(':')[0])*60 + int(x.split('-')[0].split(':')[1]), 
+                end=int(x.split('-')[1].split(':')[0])*60 + int(x.split('-')[1].split(':')[1]))
+                    for x in raw_courier['working_hours']]
         db.session.add_all(working_hours)
     
     if 'courier_type' in request.keys():
         courier.type = request['courier_type']
     
+    # Коммитим всё за раз. (=
     db.session.commit()
 
     return ('', 200), False
@@ -138,11 +148,12 @@ def validate_patch_request(request):
     if [True for x in request.keys() if x not in ['working_hours','courier_type','regions']]:
         return ('{"error": "invalid key in request"}', 400), True
     
-    if 'courier_type' in request.keys() and type(request['courier_type']) is not str:
-        return ('{"error": "invalid courier_type type"}', 400), True
+    if 'courier_type' in request.keys():
+        if type(request['courier_type']) is not str:
+            return ('{"error": "invalid courier_type type"}', 400), True
 
-    if request['courier_type'] not in ['foot', 'bike', 'car']:
-        return ('{"error": "invalid courier_type value"}', 400), True
+        if request['courier_type'] not in ['foot', 'bike', 'car']:
+            return ('{"error": "invalid courier_type value"}', 400), True
 
     if 'working_hours' in request.keys():
         if type(request['working_hours']) is not list:
@@ -184,9 +195,19 @@ def make_get_respose(id):
     response = {'courier_id': cura.id,
                 'courier_type': str(cura.type).split('.')[-1]}
     
+    # как я понял можно и обнулить всё и получить курьера без
+    # рабочего времени\региона. Можно даже понять зачем
     working = WorkTime.query.filter_by(courier_id=id).all()
     if working:
-        response['working_hours'] = [time.start + '-' + time.end for time in working]
+        for time in working:
+            h_start = str(time.start//60).zfill(2)
+            m_start = str(time.start%60).zfill(2)
+            h_end = str(time.end//60).zfill(2)
+            m_end = str(time.end%60).zfill(2)
+            if 'working_hours' not in response.keys():
+                response['working_hours'] = [f'{h_start}:{m_start}-{h_end}:{m_end}']
+            else:
+                response['working_hours'].append(f'{h_start}:{m_start}-{h_end}:{m_end}')
 
     regs = Region.query.filter_by(courier_id=id).all()
     if regs:

@@ -39,7 +39,7 @@ class Courier(db.Model):
         (пеший — 2, велокурьер — 5, авто — 9) на момент формирования развоза.
         """
         pass
-
+    
 
 class Region(db.Model):
     __tablename__ = 'Region'
@@ -55,8 +55,8 @@ class WorkTime(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     courier_id = db.Column(db.Integer, db.ForeignKey('Courier.fake_id'), nullable=False)
-    start = db.Column(db.String(5), index=True)
-    end = db.Column(db.String(5), index=True)
+    start = db.Column(db.Integer, index=True)
+    end = db.Column(db.Integer, index=True)
 
 
 class Order(db.Model):
@@ -68,10 +68,11 @@ class Order(db.Model):
     __tablename__ = 'Order'
 
     id = db.Column(db.Integer, primary_key=True)
+    # Не понимаю зачем передавать идентификатор в запросе
     fake_id = db.Column(db.Integer, index=True)
     weight = db.Column(db.Float, nullable=False)
     region = db.Column(db.Integer, nullable=False)
-    executor = db.Column(db.Integer, db.ForeignKey('Courier.fake_id'), nullable=True)
+    executor = db.Column(db.Integer, nullable=True)
     assign_time = db.Column(db.DateTime, nullable=True)
     complete_time = db.Column(db.DateTime, nullable=True)
 
@@ -86,8 +87,6 @@ class DeliveryTime(db.Model):
     __tablename__ = 'DeliveryTime'
 
     id = db.Column(db.Integer, primary_key=True)
-    delivery_from = db.Column(db.String(5), nullable=False)
-    delivery_to = db.Column(db.String(5), nullable=False)
+    delivery_from = db.Column(db.Integer, nullable=False)
+    delivery_to = db.Column(db.Integer, nullable=False)
     order = db.Column(db.Integer, db.ForeignKey('Order.fake_id'), index=True)
-
-

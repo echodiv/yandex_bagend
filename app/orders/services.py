@@ -145,7 +145,7 @@ def get_active_orders(id):
     orders = Order.query.filter_by(
         executor=id,
         complete_time=None
-    )
+    ).all()
     if not orders:
         return ('', 404), True
     res_orders ={'orders': [{'id': order.fake_id} for order in orders], \

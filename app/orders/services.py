@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from flask import current_app
 from pydantic import BaseModel, validator, ValidationError
+from typing import List
 
 from app import db
 from app.models import Courier, Order, DeliveryTime
@@ -27,10 +28,10 @@ class ValidOrder(BaseModel):
     order_id: int
     weight: float
     region: int
-    delivery_hours: list[str]
+    delivery_hours: List[str]
 
     @validator('delivery_hours')
-    def delivery_hours_format(cls, v: list) -> None:
+    def delivery_hours_format(cls, v: List) -> None:
         pattern =  re.compile('\d\d:\d\d-\d\d:\d\d')
         if list(filter(lambda x: not pattern.match(x), v)):
             raise ValidationError
@@ -92,10 +93,10 @@ def validate_post_request(request):
     for order in request:
         try:
             res = ValidOrder.parse_obj(order)
-        except ValidationError:
-            current_app.logger.debug(f'Invalid request scehme in {order=}')
+        except ValidationError as e:
+            current_app.logger.debug(f'Invalid request scehme in {order=}' + str(e.json()))
             if not [True for x in error if order['order_id'] in x.values()]:
-                error.append({"id": order['order_id']})
+                error.append({"id": order['order_id'], "error": e.json()})
 
     if error:
         return (json.dumps({'couriers': error}), 400), True
@@ -176,7 +177,8 @@ def in_work(id):
     """
     Проверка находится ли курьер в работе
     """
-    orders = Order.query.filter_by(executor=id)
+    orders = Order.query.filter_by(executor=id).all()
+    current_app.logger.debug(str(orders))
     if orders:
         return True
     return False

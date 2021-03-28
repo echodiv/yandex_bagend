@@ -4,6 +4,7 @@ from app import db
 from flask import current_app
 from json.decoder import JSONDecodeError
 from pydantic import BaseModel, validator, ValidationError
+from typing import List
 
 from app.models import Courier, Region, WorkTime
 
@@ -15,17 +16,17 @@ class ValidCourier(BaseModel):
     """
     courier_id: int
     courier_type: str
-    regions: list[int]
-    working_hours: list[str]
+    regions: List[int]
+    working_hours: List[str]
 
     @validator('working_hours')
-    def working_hours_format(cls, v: list) -> None:
+    def working_hours_format(cls, v: List) -> None:
         pattern =  re.compile('\d\d:\d\d-\d\d:\d\d')
         if list(filter(lambda x: not pattern.match(x), v)):
             raise ValidationError
     
     @validator('regions')
-    def regions_is_positive(cls, v: list) -> None:
+    def regions_is_positive(cls, v: List) -> None:
         if list(filter(lambda x: x <= 0, v)):
             raise ValidationError
 
@@ -123,7 +124,7 @@ def parse_patch_request(id, request):
                 courier_id=courier.id, 
                 start=int(x.split('-')[0].split(':')[0])*60 + int(x.split('-')[0].split(':')[1]), 
                 end=int(x.split('-')[1].split(':')[0])*60 + int(x.split('-')[1].split(':')[1]))
-                    for x in raw_courier['working_hours']]
+                    for x in request['working_hours']]
         db.session.add_all(working_hours)
     
     if 'courier_type' in request.keys():
